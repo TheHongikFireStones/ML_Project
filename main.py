@@ -2,6 +2,14 @@ import dlib
 import cv2
 import matplotlib.pyplot as plt
 
+MOUTH_LEFT_IDX = 48
+MOUTH_RIGHT_IDX = 54
+
+
+def get_mouth_width(face_left, face_right, landmarks):
+    return (landmarks.part(MOUTH_RIGHT_IDX).x - landmarks.part(MOUTH_LEFT_IDX).x) / (face_right - face_left)
+
+
 # 얼굴 검출기와 랜드마크 검출기 초기화
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
@@ -19,6 +27,7 @@ for face in faces:
 
     # 랜드마크 검출
     landmarks = predictor(gray, face)
+    print(get_mouth_width(x1, x2, landmarks))
     for n in range(0, 68):
         x = landmarks.part(n).x
         y = landmarks.part(n).y
