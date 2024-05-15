@@ -2,6 +2,26 @@ import dlib
 import cv2
 import matplotlib.pyplot as plt
 
+# 눈 크기 측정
+
+LEFT_EYE_LEFT_IDX = 36
+LEFT_EYE_RIGHT_IDX = 39
+
+RIGHT_EYE_LEFT_IDX = 42
+RIGHT_EYE_RIGHT_IDX = 44
+
+def get_left_eye_width(face_left, face_right, landmarks):
+    return (landmarks.part(LEFT_EYE_RIGHT_IDX).x - landmarks.part(LEFT_EYE_LEFT_IDX).x) / (face_right - face_left)
+
+def get_right_eye_width(face_left, face_right, landmarks):
+    return (landmarks.part(RIGHT_EYE_RIGHT_IDX).x - landmarks.part(RIGHT_EYE_LEFT_IDX).x) / (face_right - face_left)
+
+def get_eye_width(face_left, face_right, landmarks):
+    left_eye_width = get_left_eye_width(face_left, face_right, landmarks)
+    right_eye_width = get_right_eye_width(face_left, face_right, landmarks)
+    average_width = (left_eye_width + right_eye_width) / 2
+    return average_width
+
 # 얼굴 검출기와 랜드마크 검출기 초기화
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
@@ -19,6 +39,7 @@ for face in faces:
 
     # 랜드마크 검출
     landmarks = predictor(gray, face)
+    print(get_eye_width(x1, x2, landmarks))
     for n in range(0, 68):
         x = landmarks.part(n).x
         y = landmarks.part(n).y
