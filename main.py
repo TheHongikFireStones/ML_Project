@@ -26,6 +26,9 @@ def get_eye_width(face_left, face_right, landmarks):
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
 
+from google.colab import drive
+drive.mount('/content/drive')
+
 # 이미지 로드
 image = cv2.imread("asian_image/1.png")
 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
