@@ -1,6 +1,7 @@
 import dlib
 import cv2
 import matplotlib.pyplot as plt
+import boto3
 
 # 얼굴 검출기와 랜드마크 검출기 초기화
 detector = dlib.get_frontal_face_detector()
@@ -32,3 +33,37 @@ plt.figure(figsize=(10, 10))
 plt.imshow(image_rgb)
 plt.axis("off")  # 축을 표시하지 않음
 plt.show()
+
+# mustache, beard 특징을 감지하는 함수
+def detect_faces(image):
+    rekognition = boto3.client("rekognition")
+    response = rekognition.detect_faces(
+        Image={
+            "S3Object": {
+                "Bucket": "gprekognition",
+                "Name": image,
+            }
+        },
+        Attributes=['ALL'],
+    )
+
+    return response['FaceDetails']
+
+def get_face_features(face_details):
+    features = {}
+    for detail in face_details:
+        features['Mustache'] = 1 if detail['Mustache']['Value'] else 0
+        features['Beard'] = 1 if detail['Beard']['Value'] else 0
+    return features
+
+# S3 버킷에서 이미지 리스트를 가져옵니다.
+s3 = boto3.resource('s3')
+bucket = s3.Bucket('gprekognition')
+
+images = [obj.key for obj in bucket.objects.all()]
+
+# 각 이미지에 대해 얼굴을 감지하고 특징을 출력합니다.
+for image in images:
+    face_details = detect_faces(image)
+    features = get_face_features(face_details)
+    print(f"{image} - Mustache: {features['Mustache']}, Beard: {features['Beard']}")
