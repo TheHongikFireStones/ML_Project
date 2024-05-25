@@ -160,17 +160,27 @@ def get_nose_ratio(landmarks):
 
     return nose_area / face_area
 
-def visualize_first_feature():
-    first_feature_values = [item[0] for item in features]
-    # Create jittered x values
-    x_values = np.random.normal(1, 0.01, len(first_feature_values))
-    plt.scatter([1] * len(first_feature_values), first_feature_values, s=10)
-    # Label the axes
-    plt.xticks([1], ['Feature 1'])
-    plt.xlabel('Feature 1')
+def visualize_feature(features, feature_idx, feature_name):
+    feature_values = [item[feature_idx] for item in features]
+    x_values = np.random.normal(1, 0.01, len(feature_values))
+    plt.scatter(x_values, feature_values, s=10)
+    plt.xticks([1], [feature_name])
+    plt.xlabel(feature_name)
     plt.ylabel('Value')
-    # Display the plot
     plt.show()
+
+def visualize_all_features(features):
+    feature_names = [
+        "Mouth Width",
+        "Top Face Slope",
+        "Bottom Face Slope",
+        "Eye Width",
+        "Eyebrow Distance",
+        "Nose Ratio"
+    ]
+
+    for idx, feature_name in enumerate(feature_names):
+        visualize_feature(features, idx, feature_name)
 
 # 이미지 경로
 image_dir = './img/'
@@ -235,7 +245,7 @@ features = np.array(features)
 labels = np.array(labels)
 
 # 첫 번째 feature(입의 크기)의 분포를 시각화.
-visualize_first_feature()
+visualize_all_features(features)
 
 # 데이터 셋을 Normalize한다.
 scaler = StandardScaler()
