@@ -6,6 +6,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 import matplotlib.pyplot as plt
+<<<<<<< HEAD
 from sklearn.metrics import classification_report
 
 MOUTH_LEFT_IDX = 48
@@ -176,6 +177,9 @@ def visualize_first_feature():
 image_dir = './img/'
 # 디렉토리 이름 리스트
 actors_list = ["Aditya_Roy_Kapur", "Arjun_Rampal", "Hrithik_Roshan", "John_Abraham", "Kartik_Aaryan", "Ranveer_Singh", "Shahid_Kapoor", "Sidharth_Malhotra", "Sidharth_Malhotra", "Varun_Dhawan"]
+=======
+import boto3
+>>>>>>> af27cf3 (본인 코드 합병)
 
 # 얼굴 검출기와 랜드마크 검출기 초기화
 detector = dlib.get_frontal_face_detector()
@@ -203,6 +207,7 @@ for actor in actors_list:
             # 랜드마크 검출
             landmarks = predictor(gray, face)
 
+<<<<<<< HEAD
             # 각 얼굴들에 대해 feature를 추출한 후 데이터 셋에 넣는다.
             data_set.append([
                 # 입 크기
@@ -251,3 +256,44 @@ print("학습 중...")
 
 # Predict and evaluate
 y_pred = knn.predict(X_test)
+=======
+# matplotlib를 사용해 이미지 표시
+plt.figure(figsize=(10, 10))
+plt.imshow(image_rgb)
+plt.axis("off")  # 축을 표시하지 않음
+plt.show()
+
+# mustache, beard 특징을 감지하는 함수
+def detect_faces(image):
+    rekognition = boto3.client("rekognition")
+    response = rekognition.detect_faces(
+        Image={
+            "S3Object": {
+                "Bucket": "gprekognition",
+                "Name": image,
+            }
+        },
+        Attributes=['ALL'],
+    )
+
+    return response['FaceDetails']
+
+def get_face_features(face_details):
+    features = {}
+    for detail in face_details:
+        features['Mustache'] = 1 if detail['Mustache']['Value'] else 0
+        features['Beard'] = 1 if detail['Beard']['Value'] else 0
+    return features
+
+# S3 버킷에서 이미지 리스트를 가져옵니다.
+s3 = boto3.resource('s3')
+bucket = s3.Bucket('gprekognition')
+
+images = [obj.key for obj in bucket.objects.all()]
+
+# 각 이미지에 대해 얼굴을 감지하고 특징을 출력합니다.
+for image in images:
+    face_details = detect_faces(image)
+    features = get_face_features(face_details)
+    print(f"{image} - Mustache: {features['Mustache']}, Beard: {features['Beard']}")
+>>>>>>> af27cf3 (본인 코드 합병)
