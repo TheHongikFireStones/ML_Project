@@ -159,7 +159,7 @@ def get_nose_ratio(landmarks):
     face_area = shoelace_formula(face_points)
 
     return nose_area / face_area
-
+  
 def visualize_feature(features, labels, feature_idx, feature_name):
     feature_values = [item[feature_idx] for item in features]
     unique_labels = list(set(labels))
@@ -196,7 +196,6 @@ def visualize_feature(features, labels, feature_idx, feature_name):
     for i, line in enumerate(box['medians']):
         x, y = line.get_xydata()[1]  # top of median line
         plt.text(x, y, f'{y:.4f}', horizontalalignment='center', fontsize=8, color='black')
-
     plt.show()
 
 def visualize_all_features(features):
