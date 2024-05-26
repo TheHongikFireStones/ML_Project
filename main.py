@@ -2,46 +2,11 @@ import os
 import numpy as np
 import cv2
 import dlib
-import boto3
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 import matplotlib.pyplot as plt
 from sklearn.metrics import classification_report
-
-# mustache, beard 특징을 감지하는 함수
-def detect_faces(image):
-    rekognition = boto3.client("rekognition")
-    response = rekognition.detect_faces(
-        Image={
-            "S3Object": {
-                "Bucket": "gprekognition",
-                "Name": image,
-            }
-        },
-        Attributes=['ALL'],
-    )
-
-    return response['FaceDetails']
-
-def get_face_features(face_details):
-    features = {}
-    for detail in face_details:
-        features['Mustache'] = 1 if detail['Mustache']['Value'] else 0
-        features['Beard'] = 1 if detail['Beard']['Value'] else 0
-    return features
-
-# S3 버킷에서 이미지 리스트를 가져옵니다.
-s3 = boto3.resource('s3')
-bucket = s3.Bucket('gprekognition')
-
-images = [obj.key for obj in bucket.objects.all()]
-
-# 각 이미지에 대해 얼굴을 감지하고 특징을 출력합니다.
-for image in images:
-    face_details = detect_faces(image)
-    features = get_face_features(face_details)
-    print(f"{image} - Mustache: {features['Mustache']}, Beard: {features['Beard']}")
 
 MOUTH_LEFT_IDX = 48
 MOUTH_RIGHT_IDX = 54
@@ -82,7 +47,7 @@ def get_face_slope_pair(landmarks):
     except ZeroDivisionError:
         return 0, 0
 
-# 눈 크기 측정 함수
+# 눈 크기 측정
 def get_left_eye_width(face_left, face_right, landmarks):
     return (landmarks.part(LEFT_EYE_RIGHT_IDX).x - landmarks.part(LEFT_EYE_LEFT_IDX).x) / (face_right - face_left)
 
@@ -197,8 +162,10 @@ def get_nose_ratio(landmarks):
 
 def visualize_feature(features, feature_idx, feature_name):
     feature_values = [item[feature_idx] for item in features]
+    # print(feature_values.shape) # 추가된 코드
     x_values = np.random.normal(1, 0.01, len(feature_values))
-    plt.scatter(x_values, feature_values, s=10)
+    # plt.scatter(x_values, feature_values, s=10)
+    plt.scatter([1] * len(feature_values), feature_values, s=10)
     plt.xticks([1], [feature_name])
     plt.xlabel(feature_name)
     plt.ylabel('Value')
@@ -215,29 +182,55 @@ def visualize_all_features(features):
     ]
 
     for idx, feature_name in enumerate(feature_names):
-        visualize_feature(features, idx, feature_name)
+        try:
+            visualize_feature(features, idx, feature_name)
+        except IndexError as e:
+            print(f"Error: {e}. Index: {idx}, Feature Name: {feature_name}")
 
-# 이미지 경로
-image_dir = './img/'
-# 디렉토리 이름 리스트
-actors_list = ["Aditya_Roy_Kapur", "Arjun_Rampal", "Hrithik_Roshan", "John_Abraham", "Kartik_Aaryan", "Ranveer_Singh", "Shahid_Kapoor", "Sidharth_Malhotra", "Sidharth_Malhotra", "Varun_Dhawan"]
+# google colab용 코드
+from google.colab import drive
+drive.mount('/content/drive')
 
 # 얼굴 검출기와 랜드마크 검출기 초기화
 detector = dlib.get_frontal_face_detector()
-predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
+predictor = dlib.shape_predictor("/content/drive/MyDrive/ML_Project_/shape_predictor_68_face_landmarks.dat")
 
 data_set = []
 
+# 이미지 경로
+image_dir = '/content/drive/MyDrive/ML_Project_/'
+# 디렉토리 이름 리스트
+actors_list = ["Aaron Diaz","Alexandre Cunha","Bernardo Velasco","Diego Boneta","Francisco Lachowski","Henry Zaga","Leonardo Sbaraglia","Marlon Teixeira","Oscar Isaac","Rodrigo De Paul","Santiago Cabrera"]
+
 # 각 배우들의 사진을 담은 디렉토리들을 순회
 for actor in actors_list:
-    path = image_dir + actor
+
+    path = os.path.join(image_dir, actor)
+    if not os.path.exists(path):
+        print(f"Error: 디렉토리가 존재하지 않습니다. 경로를 확인하세요: {path}")
+        continue
+
     # 디렉토리 내에 있는 사진들을 순회
     for filename in os.listdir(path):
-        file_path = os.path.join(path, filename)
+        # 이미지 파일만 필터링
+        if not filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+            continue
 
-        # 이미지 로드
+        file_path = os.path.join(path, filename)
+        if not os.path.isfile(file_path):
+            print(f"Error: 파일이 존재하지 않습니다. 경로를 확인하세요: {file_path}")
+            continue
+
         image = cv2.imread(file_path)
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        if image is None:
+            print(f"Error: 이미지를 불러올 수 없습니다. 파일 형식을 확인하세요: {file_path}")
+            continue
+
+        try:
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        except cv2.error as e:
+            print(f"Error: cvtColor 함수에서 에러 발생: {e}")
+            continue
 
         # 얼굴 검출
         faces = detector(gray)
@@ -262,7 +255,7 @@ for actor in actors_list:
                 get_nose_ratio(landmarks),
 
                 # 인종 (label)
-                'Indian'
+                'South_America'
             ])
 
 # feature와 label을 각각 분리해 담을 리스트
@@ -271,15 +264,15 @@ labels = []
 
 # feature와 label을 분리한다.
 for item in data_set:
-    feature_vector = item[:1] + list(item[1])  # Flatten the tuple into two separate features
+    feature_vector = item[:1] + list(item[1]) + item[2:5] # Flatten the tuple into two separate features
     features.append(feature_vector)
-    labels.append(item[2])
+    labels.append(item[5])
 
 # 각 리스트를 넘파이 배열로 변환한다.
 features = np.array(features)
 labels = np.array(labels)
 
-# 첫 번째 feature(입의 크기)의 분포를 시각화.
+# feature들의 분포를 시각화.
 visualize_all_features(features)
 
 # 데이터 셋을 Normalize한다.
