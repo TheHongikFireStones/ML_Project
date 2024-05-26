@@ -1,4 +1,5 @@
 import os
+import glob
 import numpy as np
 import cv2
 import dlib
@@ -10,18 +11,18 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import classification_report
 
 # mustache, beard 특징을 감지하는 함수
-def detect_faces(image):
+from google.colab import drive
+
+drive.mount('/content/drive')
+
+def detect_faces(filepath):
     rekognition = boto3.client("rekognition")
+    with open(filepath, 'rb') as image_file:
+        image = image_file.read()
     response = rekognition.detect_faces(
-        Image={
-            "S3Object": {
-                "Bucket": "gprekognition",
-                "Name": image,
-            }
-        },
+        Image={'Bytes': image},
         Attributes=['ALL'],
     )
-
     return response['FaceDetails']
 
 def get_face_features(face_details):
@@ -31,17 +32,14 @@ def get_face_features(face_details):
         features['Beard'] = 1 if detail['Beard']['Value'] else 0
     return features
 
-# S3 버킷에서 이미지 리스트를 가져옵니다.
-s3 = boto3.resource('s3')
-bucket = s3.Bucket('gprekognition')
-
-images = [obj.key for obj in bucket.objects.all()]
+# Google Drive의 특정 폴더에서 모든 jpg 이미지의 경로를 가져옵니다.
+image_paths = glob.glob('/content/drive/My Drive/test/*.jpg')
 
 # 각 이미지에 대해 얼굴을 감지하고 특징을 출력합니다.
-for image in images:
-    face_details = detect_faces(image)
+for image_path in image_paths:
+    face_details = detect_faces(image_path)
     features = get_face_features(face_details)
-    print(f"{image} - Mustache: {features['Mustache']}, Beard: {features['Beard']}")
+    print(f"{os.path.basename(image_path)} - Mustache: {features['Mustache']}, Beard: {features['Beard']}")
 
 MOUTH_LEFT_IDX = 48
 MOUTH_RIGHT_IDX = 54
