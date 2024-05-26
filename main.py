@@ -1,6 +1,8 @@
+# !pip install boto3
 import os
 import numpy as np
 import cv2
+import boto3
 import dlib
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
@@ -25,6 +27,37 @@ RIGHT_EYEBROW = 24
 RIGHT_EYE_IDX1 = 43
 RIGHT_EYE_IDX2 = 44
 
+# mustache와 beard를 감지하는 함수
+def detect_mustache_and_beard(image_path):
+    # AWS Credentials 설정
+    # 여기에 .aws/credentials 파일 내용 복붙해!
+
+    # AWS Rekognition 클라이언트 초기화
+    client = boto3.client('rekognition', region_name=region_name, aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key)
+
+    # 이미지 파일에서 얼굴 감지
+    with open(file_path, 'rb') as image_file:
+        image_data = image_file.read()
+        response = client.detect_faces(
+            Image={'Bytes': image_data},
+            Attributes=['ALL']
+        )
+
+    # 수염과 콧수염의 유무 확인
+    mustache = 0
+    beard = 0
+
+    # 얼굴이 감지된 경우
+    if 'FaceDetails' in response:
+        for faceDetail in response['FaceDetails']:
+            # 수염과 콧수염이 감지된 경우
+            if 'Mustache' in faceDetail and faceDetail['Mustache']['Value']:
+                mustache = 1
+            if 'Beard' in faceDetail and faceDetail['Beard']['Value']:
+                beard = 1
+
+    return mustache, beard
+
 # 입의 크기를 구하는 함수
 def get_mouth_width(face_left, face_right, landmarks):
     return (landmarks.part(MOUTH_RIGHT_IDX).x - landmarks.part(MOUTH_LEFT_IDX).x) / (face_right - face_left)
@@ -46,7 +79,7 @@ def get_face_slope_pair(landmarks):
         return top_slope_avg, bottom_slope_avg
     except ZeroDivisionError:
         return 0, 0
-
+    
 # 눈 크기 측정
 def get_left_eye_width(face_left, face_right, landmarks):
     return (landmarks.part(LEFT_EYE_RIGHT_IDX).x - landmarks.part(LEFT_EYE_LEFT_IDX).x) / (face_right - face_left)
@@ -162,10 +195,8 @@ def get_nose_ratio(landmarks):
 
 def visualize_feature(features, feature_idx, feature_name):
     feature_values = [item[feature_idx] for item in features]
-    # print(feature_values.shape) # 추가된 코드
     x_values = np.random.normal(1, 0.01, len(feature_values))
-    # plt.scatter(x_values, feature_values, s=10)
-    plt.scatter([1] * len(feature_values), feature_values, s=10)
+    plt.scatter(x_values, feature_values, s=10)
     plt.xticks([1], [feature_name])
     plt.xlabel(feature_name)
     plt.ylabel('Value')
@@ -178,7 +209,9 @@ def visualize_all_features(features):
         "Bottom Face Slope",
         "Eye Width",
         "Eyebrow Distance",
-        "Nose Ratio"
+        "Nose Ratio",
+        "Mustache",
+        "Beard"
     ]
 
     for idx, feature_name in enumerate(feature_names):
@@ -191,16 +224,16 @@ def visualize_all_features(features):
 from google.colab import drive
 drive.mount('/content/drive')
 
+# 이미지 경로
+image_dir = '/content/drive/MyDrive/ML_Project_/'
+# 디렉토리 이름 리스트
+actors_list = ["Aaron Diaz","Alexandre Cunha"]
+
 # 얼굴 검출기와 랜드마크 검출기 초기화
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor("/content/drive/MyDrive/ML_Project_/shape_predictor_68_face_landmarks.dat")
 
 data_set = []
-
-# 이미지 경로
-image_dir = '/content/drive/MyDrive/ML_Project_/'
-# 디렉토리 이름 리스트
-actors_list = ["Aaron Diaz","Alexandre Cunha","Bernardo Velasco","Diego Boneta","Francisco Lachowski","Henry Zaga","Leonardo Sbaraglia","Marlon Teixeira","Oscar Isaac","Rodrigo De Paul","Santiago Cabrera"]
 
 # 각 배우들의 사진을 담은 디렉토리들을 순회
 for actor in actors_list:
@@ -240,6 +273,8 @@ for actor in actors_list:
             x1, y1, x2, y2 = face.left(), face.top(), face.right(), face.bottom()
             # 랜드마크 검출
             landmarks = predictor(gray, face)
+            # mustache와 beard 유무를 감지
+            mustache, beard = detect_mustache_and_beard(file_path)
 
             # 각 얼굴들에 대해 feature를 추출한 후 데이터 셋에 넣는다.
             data_set.append([
@@ -253,9 +288,12 @@ for actor in actors_list:
                 get_eyebrow_distance(y1, y2, landmarks),
                 # 코와 얼굴 비율
                 get_nose_ratio(landmarks),
-
+                # 수염 유무
+                mustache,
+                # 콧수염 유무
+                beard,
                 # 인종 (label)
-                'South_America'
+                'Indian'
             ])
 
 # feature와 label을 각각 분리해 담을 리스트
@@ -264,9 +302,9 @@ labels = []
 
 # feature와 label을 분리한다.
 for item in data_set:
-    feature_vector = item[:1] + list(item[1]) + item[2:5] # Flatten the tuple into two separate features
+    feature_vector = item[:1] + list(item[1]) + item[2:7]  # Flatten the tuple into two separate features
     features.append(feature_vector)
-    labels.append(item[5])
+    labels.append(item[7])
 
 # 각 리스트를 넘파이 배열로 변환한다.
 features = np.array(features)
