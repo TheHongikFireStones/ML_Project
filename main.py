@@ -178,7 +178,7 @@ def visualize_feature(features, labels, feature_idx, feature_name):
     box = plt.boxplot(y_values, labels=x_labels)
     plt.xlabel('Label')
     plt.ylabel(f'{feature_name} Value')
-    plt.title(f'{feature_name} Distribution by Label')
+    plt.title(f'{feature_name}')
 
     # Calculate median values
     medians = [np.median(grouped_values[label]) for label in unique_labels]
@@ -195,7 +195,7 @@ def visualize_feature(features, labels, feature_idx, feature_name):
     # Add median values as annotations
     for i, line in enumerate(box['medians']):
         x, y = line.get_xydata()[1]  # top of median line
-        plt.text(x, y, f'{y:.2f}', horizontalalignment='center', fontsize=8, color='black')
+        plt.text(x, y, f'{y:.4f}', horizontalalignment='center', fontsize=8, color='black')
 
     plt.show()
 
