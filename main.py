@@ -33,6 +33,7 @@ def get_face_features(face_details):
     return features
 
 # Google Drive의 특정 폴더에서 모든 jpg 이미지의 경로를 가져옵니다.
+# 수정필!!!!!!! 경로 수정해야되는데 저 test 부분만 실제 폴더 이름으로 바꿔주면 그 폴더 안에 있는 모든 이미지를 가져올 수 있어요!
 image_paths = glob.glob('/content/drive/My Drive/test/*.jpg')
 
 # 각 이미지에 대해 얼굴을 감지하고 특징을 출력합니다.
