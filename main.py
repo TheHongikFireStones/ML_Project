@@ -159,16 +159,43 @@ def get_nose_ratio(landmarks):
     face_area = shoelace_formula(face_points)
 
     return nose_area / face_area
-
-def visualize_feature(features, feature_idx, feature_name):
+  
+def visualize_feature(features, labels, feature_idx, feature_name):
     feature_values = [item[feature_idx] for item in features]
-    # print(feature_values.shape) # 추가된 코드
-    x_values = np.random.normal(1, 0.01, len(feature_values))
-    # plt.scatter(x_values, feature_values, s=10)
-    plt.scatter([1] * len(feature_values), feature_values, s=10)
-    plt.xticks([1], [feature_name])
-    plt.xlabel(feature_name)
-    plt.ylabel('Value')
+    unique_labels = list(set(labels))
+    grouped_values = {label: [] for label in unique_labels}
+
+    for value, label in zip(feature_values, labels):
+        grouped_values[label].append(value)
+
+    x_labels = []
+    y_values = []
+
+    for label in unique_labels:
+        x_labels.append(label)
+        y_values.append(grouped_values[label])
+
+    box = plt.boxplot(y_values, labels=x_labels)
+    plt.xlabel('Label')
+    plt.ylabel(f'{feature_name} Value')
+    plt.title(f'{feature_name}')
+
+    # Calculate median values
+    medians = [np.median(grouped_values[label]) for label in unique_labels]
+    median_min = min(medians)
+    median_max = max(medians)
+
+    # Set y-axis limits around median values
+    margin = (median_max - median_min) * 0.5  # Adjust margin for better visualization
+    plt.ylim(median_min - margin, median_max + margin)
+
+    # Set y-ticks around median values
+    plt.yticks(np.arange(min(feature_values), max(feature_values) + 1, step=(max(feature_values) - min(feature_values)) / 10))
+
+    # Add median values as annotations
+    for i, line in enumerate(box['medians']):
+        x, y = line.get_xydata()[1]  # top of median line
+        plt.text(x, y, f'{y:.4f}', horizontalalignment='center', fontsize=8, color='black')
     plt.show()
 
 def visualize_all_features(features):
@@ -183,7 +210,7 @@ def visualize_all_features(features):
 
     for idx, feature_name in enumerate(feature_names):
         try:
-            visualize_feature(features, idx, feature_name)
+            visualize_feature(features, labels, idx, feature_name)
         except IndexError as e:
             print(f"Error: {e}. Index: {idx}, Feature Name: {feature_name}")
 
@@ -191,72 +218,63 @@ def visualize_all_features(features):
 from google.colab import drive
 drive.mount('/content/drive')
 
-# 얼굴 검출기와 랜드마크 검출기 초기화
-detector = dlib.get_frontal_face_detector()
-predictor = dlib.shape_predictor("/content/drive/MyDrive/ML_Project_/shape_predictor_68_face_landmarks.dat")
+def process_images(image_base_dir, label_dirs):
+    data_set = []
 
-data_set = []
+    detector = dlib.get_frontal_face_detector()
+    predictor = dlib.shape_predictor("/content/drive/MyDrive/ML_Project_/shape_predictor_68_face_landmarks.dat")
 
-# 이미지 경로
-image_dir = '/content/drive/MyDrive/ML_Project_/'
-# 디렉토리 이름 리스트
-actors_list = ["Aaron Diaz","Alexandre Cunha","Bernardo Velasco","Diego Boneta","Francisco Lachowski","Henry Zaga","Leonardo Sbaraglia","Marlon Teixeira","Oscar Isaac","Rodrigo De Paul","Santiago Cabrera"]
-
-# 각 배우들의 사진을 담은 디렉토리들을 순회
-for actor in actors_list:
-
-    path = os.path.join(image_dir, actor)
-    if not os.path.exists(path):
-        print(f"Error: 디렉토리가 존재하지 않습니다. 경로를 확인하세요: {path}")
-        continue
-
-    # 디렉토리 내에 있는 사진들을 순회
-    for filename in os.listdir(path):
-        # 이미지 파일만 필터링
-        if not filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+    for label in label_dirs:
+        label_path = os.path.join(image_base_dir, label)
+        if not os.path.exists(label_path):
+            print(f"Error: 디렉토리가 존재하지 않습니다. 경로를 확인하세요: {label_path}")
             continue
 
-        file_path = os.path.join(path, filename)
-        if not os.path.isfile(file_path):
-            print(f"Error: 파일이 존재하지 않습니다. 경로를 확인하세요: {file_path}")
-            continue
+        for actor in os.listdir(label_path):
+            actor_path = os.path.join(label_path, actor)
+            if not os.path.isdir(actor_path):
+                continue
 
-        image = cv2.imread(file_path)
-        if image is None:
-            print(f"Error: 이미지를 불러올 수 없습니다. 파일 형식을 확인하세요: {file_path}")
-            continue
+            for filename in os.listdir(actor_path):
+                if not filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+                    continue
 
-        try:
-            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        except cv2.error as e:
-            print(f"Error: cvtColor 함수에서 에러 발생: {e}")
-            continue
+                file_path = os.path.join(actor_path, filename)
+                if not os.path.isfile(file_path):
+                    print(f"Error: 파일이 존재하지 않습니다. 경로를 확인하세요: {file_path}")
+                    continue
 
-        # 얼굴 검출
-        faces = detector(gray)
+                image = cv2.imread(file_path)
+                if image is None:
+                    print(f"Error: 이미지를 불러올 수 없습니다. 파일 형식을 확인하세요: {file_path}")
+                    continue
 
-        # 얼굴이 여러 개라면 각 얼굴들에 대해 작업 수행
-        for face in faces:
-            x1, y1, x2, y2 = face.left(), face.top(), face.right(), face.bottom()
-            # 랜드마크 검출
-            landmarks = predictor(gray, face)
+                try:
+                    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+                except cv2.error as e:
+                    print(f"Error: cvtColor 함수에서 에러 발생: {e}")
+                    continue
 
-            # 각 얼굴들에 대해 feature를 추출한 후 데이터 셋에 넣는다.
-            data_set.append([
-                # 입 크기
-                get_mouth_width(x1, x2, landmarks),
-                # 얼굴이 각진 정도
-                get_face_slope_pair(landmarks),
-                #눈 크기
-                get_eye_width(x1, x2, landmarks),
-                #눈과 눈썹 사이 거리
-                get_eyebrow_distance(y1, y2, landmarks),
-                # 코와 얼굴 비율
-                get_nose_ratio(landmarks),
+                faces = detector(gray)
 
-                # 인종 (label)
-                'South_America'
-            ])
+                for face in faces:
+                    x1, y1, x2, y2 = face.left(), face.top(), face.right(), face.bottom()
+                    landmarks = predictor(gray, face)
+
+                    data_set.append([
+                        get_mouth_width(x1, x2, landmarks),
+                        get_face_slope_pair(landmarks),
+                        get_eye_width(x1, x2, landmarks),
+                        get_eyebrow_distance(y1, y2, landmarks),
+                        get_nose_ratio(landmarks),
+                        label  # Label is the folder name
+                    ])
+
+    return data_set
+
+image_base_dir = '/content/drive/MyDrive/ML_Project_'
+label_dirs = ["south_america", "bollywood_actor", "east_asian_actor", "white_man"]
+data_set = process_images(image_base_dir, label_dirs)
 
 # feature와 label을 각각 분리해 담을 리스트
 features = []
@@ -264,9 +282,9 @@ labels = []
 
 # feature와 label을 분리한다.
 for item in data_set:
-    feature_vector = item[:1] + list(item[1]) + item[2:5] # Flatten the tuple into two separate features
+    feature_vector = item[:1] + list(item[1]) + item[2:5] #수염 feature 추가하면 같이 수정해야 함
     features.append(feature_vector)
-    labels.append(item[5])
+    labels.append(item[5])  #feature 추가하면 6으로 바꿔야함
 
 # 각 리스트를 넘파이 배열로 변환한다.
 features = np.array(features)
