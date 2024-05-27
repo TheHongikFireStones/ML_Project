@@ -36,7 +36,7 @@ def detect_mustache_and_beard(image_path):
     client = boto3.client('rekognition', region_name=region_name, aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key)
 
     # 이미지 파일에서 얼굴 감지
-    with open(file_path, 'rb') as image_file:
+    with open(image_path, 'rb') as image_file:
         image_data = image_file.read()
         response = client.detect_faces(
             Image={'Bytes': image_data},
