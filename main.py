@@ -282,10 +282,17 @@ features = scaler.fit_transform(features)
 # test set과 train set을 분리
 X_train, X_test, y_train, y_test = train_test_split(features, labels, test_size=0.2, random_state=42)
 
-# knn 학습
-knn = KNeighborsClassifier(n_neighbors=3)  # You can choose the value of k
-knn.fit(X_train, y_train)
-print("학습 중...")
+# # knn 학습
+# knn = KNeighborsClassifier(n_neighbors=3)  # You can choose the value of k
+# knn.fit(X_train, y_train)
+# print("학습 완료")
+
+# 최적의 k값 찾기
+for k in range(1, 101):
+    knn = KNeighborsClassifier(n_neighbors=k, n_jobs=-1)
+    knn.fit(X_train, y_train)
+    score = knn.score(X_test, y_test)
+    print('k: %d, accuracy: %.2f' % (k, score*100))
 
 # Predict and evaluate
 y_pred = knn.predict(X_test)
